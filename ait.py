@@ -1,5 +1,5 @@
-import subprocess
 import functools
+import subprocess
 from collections import namedtuple
 
 try:
@@ -7,6 +7,7 @@ try:
 except ImportError:
     screeninfo = None
 
+from logger import Logger
 
 BUTTONS = {
     # Left
@@ -196,3 +197,6 @@ def write(*texts):
     args = ['xdotool', 'type']
     args.extend(texts)
     subprocess.run(args)
+
+
+log = Logger()
