@@ -65,6 +65,36 @@ KEYS = {
 Position = namedtuple('Position', ('x', 'y'))
 
 
+def _requires(*, program, message):
+    """
+    Decorator that replaces methods with a no-op raise error function
+    if the desired condition (such as a program running successfully)
+    is not met.
+    """
+    try:
+        subprocess.run(program, shell=True, check=True,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        ok = False
+    else:
+        ok = True
+
+    def decorator(f):
+        if ok:
+            return f
+        else:
+            @functools.wraps(f)
+            def failed(*args, **kwargs):
+                raise ValueError(message)
+            return failed
+
+    return decorator
+
+
+_requires_xdotool = _requires(program='xdotool -v',
+                              message='xdotool is not installed')
+
+
 def _parse_button(n):
     try:
         return BUTTONS[n]
@@ -98,6 +128,7 @@ def _parse_pos(x, y):
     return str(int(x)), str(int(y)), rel
 
 
+@_requires_xdotool
 def click(*args):
     """
     Performs a mouse click.
@@ -134,6 +165,7 @@ def click(*args):
     subprocess.run(('xdotool', 'click', button))
 
 
+@_requires_xdotool
 def move(x, y):
     """
     Moves the mouse across the screen.
@@ -154,6 +186,7 @@ def move(x, y):
     subprocess.run(('xdotool', move_arg, x, y))
 
 
+@_requires_xdotool
 def mouse():
     """
     Returns a named tuple for the current (x, y) coordinates of the mouse
@@ -169,6 +202,7 @@ def mouse():
     return Position(x, y)
 
 
+@_requires_xdotool
 def press(*keys):
     """
     Presses the given key(s).
@@ -190,6 +224,7 @@ def press(*keys):
     subprocess.run(args)
 
 
+@_requires_xdotool
 def write(*texts):
     """
     Writes the given text(s).
@@ -199,4 +234,7 @@ def write(*texts):
     subprocess.run(args)
 
 
-log = Logger()
+try:
+    log = Logger()
+except ValueError:
+    log = None

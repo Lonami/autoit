@@ -17,6 +17,15 @@ How to install it?
 
     pip install autoit
 
+
+External requirements?
+----------------------
+
+- Linux, for now.
+- ``xdotool`` to do any ``ait`` operation.
+- Python's ``Xlib`` to use ``ait.log`` (mouse/keyboard logger).
+
+
 How does it look like?
 ----------------------
 

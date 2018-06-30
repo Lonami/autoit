@@ -1,15 +1,21 @@
 import itertools
 
-import Xlib
-import Xlib.XK
-import Xlib.display
-import Xlib.ext
-import Xlib.ext.record
-import Xlib.protocol
+try:
+    import Xlib
+    import Xlib.XK
+    import Xlib.display
+    import Xlib.ext
+    import Xlib.ext.record
+    import Xlib.protocol
+except ImportError:
+    Xlib = None
 
 
 class Logger:
     def __init__(self):
+        if Xlib is None:
+            raise ValueError('Xlib module is not installed')
+
         self.local_dpy = Xlib.display.Display()
         self.record_dpy = Xlib.display.Display()
         if 'RECORD' not in self.record_dpy.extensions:
