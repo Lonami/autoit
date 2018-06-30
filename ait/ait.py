@@ -7,7 +7,7 @@ try:
 except ImportError:
     screeninfo = None
 
-from logger import Logger
+from .logger import Logger
 
 BUTTONS = {
     # Left
