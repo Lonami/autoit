@@ -130,32 +130,6 @@ def _parse_pos(x, y):
 
 @_requires_xdotool
 def click(*args):
-    """
-    Performs a mouse click.
-
-    To left-click wherever the mouse is right now:
-    >>> click()
-
-    To use a different button:
-    - Left click with -1, 'l' or 'L'
-    - Middle click with 0, 'm' or 'M'
-    - Right click with +1, 'r' or 'R'
-    >>> click(1)
-
-    To left-click after moving to some (x, y) from the top-left corner:
-    >>> click(120, 240)
-
-    You can use the 'j' prefix to use relative coordinates.
-    At least one non-zero value must have the 'j' prefix:
-    >>> click(0j, 20j)
-
-    You can use a floating point value to use percentages.
-    Note that you can combine this with the 'j' prefix too:
-    >>> click(0.2, 0.8)
-
-    To use a different button after moving to ome (x, y):
-    >>> click(240, 360, 'm')
-    """
     argc = len(args)
     assert argc < 4, 'Invalid number of arguments'
     if argc & 2:
@@ -167,20 +141,6 @@ def click(*args):
 
 @_requires_xdotool
 def move(x, y):
-    """
-    Moves the mouse across the screen.
-
-    To move the mouse to (x, y) from the top-left corner:
-    >>> move(120, 240)
-
-    You can use the 'j' prefix to use relative coordinates.
-    At least one non-zero value must have the 'j' prefix:
-    >>> move(0j, 20j)
-
-    You can use a floating point value to use percentages.
-    Note that you can combine this with the 'j' prefix too:
-    >>> move(0.2, 0.8)
-    """
     x, y, rel = _parse_pos(x, y)
     move_arg = 'mousemove_relative' if rel else 'mousemove'
     subprocess.run(('xdotool', move_arg, x, y))
@@ -188,11 +148,6 @@ def move(x, y):
 
 @_requires_xdotool
 def mouse():
-    """
-    Returns a named tuple for the current (x, y) coordinates of the mouse
-    in screen. This means you can access the fields as result.x and result.y
-    as well, or use 'x, y = mouse()'.
-    """
     output = subprocess.run(('xdotool', 'getmouselocation'),
                             stdout=subprocess.PIPE).stdout
 
@@ -204,21 +159,6 @@ def mouse():
 
 @_requires_xdotool
 def press(*keys):
-    """
-    Presses the given key(s).
-
-    You use 'shift', 'ctrl', 'alt' and 'super' to press these control keys.
-    You can press more than one key at once joining them by '+' like 'ctrl+d'.
-    You can press function keys from 'F1' to 'F12' (upper-case F letter).
-    You can use '\b' as backspace.
-
-    >>> press('j')
-    >>> press('H', 'i', 'Return')
-    >>> press('shift+h')
-    >>> press('ctrl+d')
-    >>> press('alt+F4')
-    >>> press('super')
-    """
     args = ['xdotool', 'key']
     args.extend(KEYS.get(k, k) for k in keys)
     subprocess.run(args)
@@ -226,9 +166,6 @@ def press(*keys):
 
 @_requires_xdotool
 def write(*texts):
-    """
-    Writes the given text(s).
-    """
     args = ['xdotool', 'type']
     args.extend(texts)
     subprocess.run(args)
