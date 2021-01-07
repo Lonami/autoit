@@ -1,6 +1,5 @@
 import functools
 import subprocess
-from collections import namedtuple
 
 try:
     import screeninfo
@@ -8,6 +7,7 @@ except ImportError:
     screeninfo = None
 
 from .logger import Logger
+from ._common import Position
 
 BUTTONS = {
     # Left
@@ -16,12 +16,12 @@ BUTTONS = {
     'L': '1',
     # Middle
     0: '2',
-    'r': '2',
-    'R': '2',
+    'm': '2',
+    'M': '2',
     # Right
     1: '3',
-    'm': '3',
-    'M': '3',
+    'r': '3',
+    'R': '3',
 }
 
 KEYS = {
@@ -61,8 +61,6 @@ KEYS = {
     '\b': 'BackSpace',
     '\n': 'Return'
 }
-
-Position = namedtuple('Position', ('x', 'y'))
 
 
 def _requires(*, program, message):
