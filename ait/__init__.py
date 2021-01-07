@@ -1,3 +1,3 @@
-from .ait import click, mouse, move, press, write, log
-
-__all__ = ['click', 'mouse', 'move', 'press', 'write', 'log']
+from . import _common
+# TODO don't use * and define __all__
+from .ait import *

@@ -3,9 +3,9 @@ import functools
 
 
 if os.name == 'nt':
-    import _windows as _mod
+    from . import _windows as _mod
 else:
-    import _linux as _mod
+    from . import _linux as _mod
 
 
 def _proxy(f):
@@ -73,6 +73,25 @@ def mouse():
     Returns a named tuple for the current (x, y) coordinates of the mouse
     in screen. This means you can access the fields as result.x and result.y
     as well, or use 'x, y = mouse()'.
+    """
+
+
+@_proxy
+def color(x, y):
+    """
+    Return the `(R, G, B)` color at the given position.
+    """
+
+
+@_proxy
+def is_down(key):
+    """
+    Is the given key being pressed?
+
+    >>> if is_down('h'):
+    ...     print('h')
+    ... else:
+    ...     print('no h :(')
     """
 
 
