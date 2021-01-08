@@ -173,19 +173,22 @@ def _get_screen_size():
 
 
 def _parse_pos(x, y):
-    rel = x.imag or y.imag
+    # https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput
+    MAX = 65535
+
+    rel = bool(x.imag or y.imag)
     if rel:
         x = x.imag or x.real
         y = y.imag or y.real
 
-    if 0.0 < x < 1.0 or 0.0 < y < 1.0:
+    if not (0.0 < x < 1.0 or 0.0 < y < 1.0):
         w, h = _get_screen_size()
-        if 0.0 < x < 1.0:
-            x = int(w * x)
-        if 0.0 < y < 1.0:
-            y = int(h * y)
+        x /= w
+        y /= h
 
-    return str(int(x)), str(int(y)), rel
+    x *= MAX
+    y *= MAX
+    return int(x), int(y), rel
 
 
 class DCBox:
@@ -344,6 +347,23 @@ def mouse():
     pt = POINT()
     ctypes.windll.user32.GetCursorPos(ctypes.byref(pt))
     return Position(pt.x, pt.y)
+
+
+
+def move(x, y):
+    x, y, rel = _parse_pos(x, y)
+    MOUSEEVENTF_ABSOLUTE = 0x8000
+    MOUSEEVENTF_MOVE = 0x0001
+    inputs = INPUT(type=INPUT_MOUSE, value=INPUTUNION(mi=MOUSEINPUT(
+        dx=x,
+        dy=y,
+        mouseData=0,
+        dwFlags=MOUSEEVENTF_MOVE | (MOUSEEVENTF_ABSOLUTE, 0)[rel],
+        time=0,
+        dwExtraInfo=None,
+    )))
+    ctypes.windll.user32.SendInput(1, ctypes.byref(inputs), ctypes.sizeof(inputs))
+
 
 
 def color(x, y):
