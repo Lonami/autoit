@@ -374,7 +374,17 @@ def is_down(vk):
     return (ctypes.windll.user32.GetKeyState(vk) & 0x80) != 0
 
 
-def _press(key, down=None):
+def _vk_to_kbd_input(vk, down):
+    return INPUT(type=INPUT_KEYBOARD, value=INPUTUNION(ki=KEYBDINPUT(
+        wVk=vk,
+        wScan=0,
+        dwFlags=(KEYEVENTF_KEYUP, 0)[down],
+        time=0,
+        dwExtraInfo=None
+    )))
+
+
+def press(*keys):
     """
     https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-sendinput
     UINT SendInput(
@@ -383,37 +393,27 @@ def _press(key, down=None):
         int     cbSize
     );
     """
-    if down is None:
-        _press(key, True)
-        _press(key, False)
-        return
+    count = 2 * len(keys)
+    inputs = []
+    for i, key in enumerate(keys):
+        vk = _key_to_vk(key)
+        inputs.append(_vk_to_kbd_input(vk, True))
+        inputs.append(_vk_to_kbd_input(vk, False))
 
-    count = ctypes.c_uint(1)
-    inputs = INPUT(type=INPUT_KEYBOARD, value=INPUTUNION(ki=KEYBDINPUT(
-        wVk=_key_to_vk(key),
-        wScan=0,
-        dwFlags=0 if down else KEYEVENTF_KEYUP,
-        time=0,
-        dwExtraInfo=None
-    )))
-    ctypes.windll.user32.SendInput(count, ctypes.byref(inputs), ctypes.sizeof(inputs))
-
-
-def press(*keys):
-    # TODO we can actually send an array to sendinput here
-    for key in keys:
-        _press(key)
+    inputs = (INPUT * count)(*inputs)
+    ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
 
 
 @contextmanager
 def hold(*keys):
-    for key in keys:
-        _press(key, down=True)
+    count = len(keys)
+    inputs = (INPUT * count)(*(_vk_to_kbd_input(_key_to_vk(key), True) for key in keys))
+    ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
     try:
         yield
     finally:
-        for key in keys:
-            _press(key, down=False)
+        inputs = (INPUT * count)(*(_vk_to_kbd_input(_key_to_vk(key), False) for key in keys))
+        ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
 
 
 def click(*args):
