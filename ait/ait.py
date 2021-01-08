@@ -115,6 +115,24 @@ def press(*keys):
 
 
 @_proxy
+def hold(*keys):
+    """
+    Return an object to be used as a context-manager that will hold the given
+    keys for as long as it's open.
+
+    For example, you can use this to control-click:
+
+    >>> with hold('ctrl'):
+    >>>     click()
+
+    Or more complicated combinations such as opening the Windows task manager:
+
+    >>> with hold('ctrl', 'shift'):
+    >>>     press('esc')
+    """
+
+
+@_proxy
 def write(*texts):
     """
     Writes the given text(s).

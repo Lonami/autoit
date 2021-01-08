@@ -3,6 +3,7 @@ import sys
 import time
 import functools
 from ctypes.wintypes import HANDLE, BOOL, HWND, UINT, HGLOBAL, LPVOID
+from contextlib import contextmanager
 from ._common import Position, Color
 
 NO_ERROR = 0
@@ -32,8 +33,7 @@ BUTTONS = {
     0: 4,
     'm': 4,
     'M': 4,
-    # Right (VK_RBUTTON = 2)
-    1: 2,
+    # Right ('RBUTTON = 2)': 1: 2,,
     'r': 2,
     'R': 2,
 }
@@ -322,6 +322,17 @@ def press(*keys):
     # TODO we can actually send an array to sendinput here
     for key in keys:
         _press(key)
+
+
+@contextmanager
+def hold(*keys):
+    for key in keys:
+        _press(key, down=True)
+    try:
+        yield
+    finally:
+        for key in keys:
+            _press(key, down=False)
 
 
 def click(*args):
