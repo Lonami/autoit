@@ -38,6 +38,87 @@ BUTTONS = {
     'R': 2,
 }
 
+KEY_MAP = {
+    'LMB': 0x01,
+    'RMB': 0x02,
+    'CANCEL': 0x03,
+    'MMB': 0x04,
+    '\r': 0x08,
+    '\t': 0x09,
+    'CLEAR': 0x0C,
+    '\n': 0x0D,
+    'SHIFT': 0x10,
+    'CTRL': 0x11,
+    'ALT': 0x12,
+    'PAUSE': 0x13,
+    'CAPSLOCK': 0x14,
+    'ESC': 0x1B,
+    'PAGEUP': 0x21,
+    'PAGEDOWN': 0x22,
+    'END': 0x23,
+    'HOME': 0x24,
+    'LEFT': 0x25,
+    'UP': 0x26,
+    'RIGHT': 0x27,
+    'DOWN': 0x28,
+    'SELECT': 0x29,
+    'PRINT': 0x2A,
+    'EXEC': 0x2B,
+    'PRSCR': 0x2C,
+    'INS': 0x2D,
+    'DEL': 0x2E,
+    'HELP': 0x2F,
+    'SUPER': 0x5B,
+    'F1': 0x70,
+    'F2': 0x71,
+    'F3': 0x72,
+    'F4': 0x73,
+    'F5': 0x74,
+    'F6': 0x75,
+    'F7': 0x76,
+    'F8': 0x77,
+    'F9': 0x78,
+    'F10': 0x79,
+    'F11': 0x7A,
+    'F12': 0x7B,
+    'F13': 0x7C,
+    'F14': 0x7D,
+    'F15': 0x7E,
+    'F16': 0x7F,
+    'F17': 0x80,
+    'F18': 0x81,
+    'F19': 0x82,
+    'F20': 0x83,
+    'F21': 0x84,
+    'F22': 0x85,
+    'F23': 0x86,
+    'F24': 0x87,
+    'NUMLOCK': 0x90,
+    'SCROLLLOCK': 0x91,
+    'LSHIFT': 0xA0,
+    'RSHIFT': 0xA1,
+    'LCTRL': 0xA2,
+    'RCTRL': 0xA3,
+    'LALT': 0xA4,
+    'RALT': 0xA5,
+    'MUTE': 0xAD,
+    'VOLDOWN': 0xAE,
+    'VOLUP': 0xAF,
+    'MEDIANEXT': 0xB0,
+    'MEDIAPREV': 0xB1,
+    'MEDIASTOP': 0xB2,
+    'MEDIAPLAYPAUSE': 0xB3,
+}
+
+def _key_to_vk(key):
+    key = key.upper()
+    try:
+        return KEY_MAP[key]
+    except KeyError:
+        # TODO VkKeyScanExA
+        return ord(key)
+
+
 BUTTON_TO_EVENTS = {
     1: (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
     2: (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
@@ -293,7 +374,7 @@ def is_down(vk):
     return (ctypes.windll.user32.GetKeyState(vk) & 0x80) != 0
 
 
-def _press(vk, down=None):
+def _press(key, down=None):
     """
     https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-sendinput
     UINT SendInput(
@@ -303,13 +384,13 @@ def _press(vk, down=None):
     );
     """
     if down is None:
-        _press(vk, True)
-        _press(vk, False)
+        _press(key, True)
+        _press(key, False)
         return
 
     count = ctypes.c_uint(1)
     inputs = INPUT(type=INPUT_KEYBOARD, value=INPUTUNION(ki=KEYBDINPUT(
-        wVk=vk,
+        wVk=_key_to_vk(key),
         wScan=0,
         dwFlags=0 if down else KEYEVENTF_KEYUP,
         time=0,
