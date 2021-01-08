@@ -119,4 +119,17 @@ def write(*texts):
     """
     Writes the given text(s).
     """
-    return _mod.write(*texts)
+
+
+@_proxy
+def paste():
+    """
+    Paste the current clipboard contents into a Python `str` and return it.
+    """
+
+
+@_proxy
+def copy(text):
+    """
+    Copy the given input text into the system's clipboard.
+    """

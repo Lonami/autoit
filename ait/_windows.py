@@ -2,6 +2,7 @@ import ctypes
 import sys
 import time
 import functools
+from ctypes.wintypes import HANDLE, BOOL, HWND, UINT, HGLOBAL, LPVOID
 from ._common import Position, Color
 
 NO_ERROR = 0
@@ -43,12 +44,41 @@ BUTTON_TO_EVENTS = {
     4: (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
 }
 
+CF_UNICODETEXT = 13
+GMEM_MOVEABLE = 0x0002
+GMEM_ZEROINIT = 0x0040
 
 def _parse_button(n):
     try:
         return BUTTONS[n]
     except KeyError:
         raise ValueError('Invalid button given') from None
+
+
+# ctypes is broken for pointers. ctypes.windll.* functions can be patched in-place but it's simpler not to.
+# https://forums.autodesk.com/t5/maya-programming/ctypes-bug-cannot-copy-data-to-clipboard-via-python/td-p/9195866
+def _define(fn, res, *args):
+    fn.argtypes = args
+    fn.restype = res
+    return fn
+
+
+user32 = ctypes.WinDLL('user32')
+kernel32 = ctypes.WinDLL('kernel32')
+
+OpenClipboard = _define(user32.OpenClipboard, BOOL, HWND)
+CloseClipboard = _define(user32.CloseClipboard, BOOL)
+
+EmptyClipboard = _define(user32.EmptyClipboard, BOOL)
+
+GetClipboardData = _define(user32.GetClipboardData, HANDLE, UINT)
+SetClipboardData = _define(user32.SetClipboardData, HANDLE, UINT, HANDLE)
+
+GlobalLock = _define(kernel32.GlobalLock, LPVOID, HGLOBAL)
+GlobalUnlock = _define(kernel32.GlobalUnlock, BOOL, HGLOBAL)
+GlobalAlloc = _define(kernel32.GlobalAlloc, HGLOBAL, UINT, ctypes.c_size_t)
+GlobalSize = _define(kernel32.GlobalSize, ctypes.c_size_t, HGLOBAL)
+
 
 
 @functools.lru_cache(1)
@@ -315,3 +345,35 @@ def click(*args):
             dwExtraInfo=None,
         )))
         ctypes.windll.user32.SendInput(count, ctypes.byref(inputs), ctypes.sizeof(inputs))
+
+
+def paste():
+    OpenClipboard(None)
+    handle = GetClipboardData(CF_UNICODETEXT)
+    cstring = GlobalLock(handle)
+    size = GlobalSize(handle)
+    if cstring and size:
+        raw_data = ctypes.create_string_buffer(size)
+        # (ctypes.c_byte * size).from_address(cstring)[:] would give us a (less efficient) Python list.
+        # bytes.decode does not seem happy taking c_byte_Array_# as input parameter unfortunately.
+        # Using a temporary buffer for strings and moving the data seems to be the best approach.
+        ctypes.memmove(raw_data, cstring, size)
+        text = raw_data.raw.decode('utf-16le').rstrip('\0')
+    else:
+        text = None
+
+    GlobalUnlock(handle)
+    CloseClipboard()
+    return text
+
+
+def copy(text):
+    buffer = s.encode('utf-16le')
+    OpenClipboard(None)
+    EmptyClipboard()
+    handle = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, len(buffer) + 2)
+    cstring = GlobalLock(handle)
+    ctypes.memmove(cstring, buffer, len(buffer))
+    GlobalUnlock(handle)
+    SetClipboardData(CF_UNICODETEXT, handle)
+    CloseClipboard()
