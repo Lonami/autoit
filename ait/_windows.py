@@ -520,15 +520,20 @@ def move(x, y):
 
 
 def click(*args):
-    # TODO move mouse with the call directly
     argc = len(args)
-    assert argc < 4, 'Invalid number of arguments'
-    if argc & 2:
-        move(args[0], args[1])
+    if argc == 0:
+        button = MB.L
+    elif argc == 1:
+        button = MB.parse(args[0])
+    elif argc == 3:
+        x, y, button = args
+        button = MB.parse(button)
+        # TODO move mouse with the call directly
+        move(x, y)
+    else:
+        raise TypeError('0, 1 or 3 arguments required, but {} given'.format(argc))
 
-    button = _parse_button(args[-1]) if argc & 1 else 1
     flags = BUTTON_TO_EVENTS[button]
-
     count = ctypes.c_uint(1)
     for flag in flags:
         inputs = INPUT(type=INPUT_MOUSE, value=INPUTUNION(mi=MOUSEINPUT(

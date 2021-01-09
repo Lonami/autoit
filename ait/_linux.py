@@ -7,21 +7,12 @@ except ImportError:
     screeninfo = None
 
 from .logger import Logger
-from ._common import Position
+from ._common import Position, MB
 
 BUTTONS = {
-    # Left
-    -1: '1',
-    'l': '1',
-    'L': '1',
-    # Middle
-    0: '2',
-    'm': '2',
-    'M': '2',
-    # Right
-    1: '3',
-    'r': '3',
-    'R': '3',
+    MB.L: '1',
+    MB.M: '2',
+    MB.R: '3',
 }
 
 KEYS = {
@@ -150,12 +141,18 @@ def move(x, y):
 @_requires_xdotool
 def click(*args):
     argc = len(args)
-    assert argc < 4, 'Invalid number of arguments'
-    if argc & 2:
-        move(args[0], args[1])
+    if argc == 0:
+        button = MB.L
+    elif argc == 1:
+        button = MB.parse(args[0])
+    elif argc == 3:
+        x, y, button = args
+        button = MB.parse(button)
+        move(x, y)
+    else:
+        raise TypeError('0, 1 or 3 arguments required, but {} given'.format(argc))
 
-    button = _parse_button(args[-1]) if argc & 1 else '1'
-    subprocess.run(('xdotool', 'click', button))
+    subprocess.run(('xdotool', 'click', BUTTONS[button]))
 
 
 # Keyboard
