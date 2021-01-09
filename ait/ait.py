@@ -187,6 +187,24 @@ def write(*texts, sep=' ', end=''):
     _mod.write(sep.join(texts) + end)
 
 
+@_proxy
+def events():
+    """
+    Return an iterator over the keyboard and mouse button events.
+
+    The yielded items are tuples consisting of `(key, down)`, where `key` is the uppercase string
+    representing the key and `down` is a boolean which is `True` if the key is being held.
+
+    >>> for key, down in events():
+    ...     if key == 'H' and down:
+    ...         print('h!')
+
+    The iterator can also be used in asynchronous contexts (`async for`).
+
+    If multiple events occured between iteration steps, they're returned in arbitrary order.
+    """
+
+
 # Mouse-keyboard common
 
 

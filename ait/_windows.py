@@ -4,7 +4,10 @@ import time
 import functools
 from ctypes.wintypes import HANDLE, BOOL, HWND, UINT, HGLOBAL, LPVOID
 from contextlib import contextmanager
+import asyncio
 from ._common import Position, Color, MB
+
+EVENTS_POLL_DELAY = 0.05
 
 NO_ERROR = 0
 
@@ -102,6 +105,8 @@ KEY_MAP = {
     'MEDIAPLAYPAUSE': 0xB3,
 }
 
+INV_KEY_MAP = {v: k for k, v in KEY_MAP.items()}
+
 CF_UNICODETEXT = 13
 GMEM_MOVEABLE = 0x0002
 GMEM_ZEROINIT = 0x0040
@@ -117,6 +122,13 @@ def _key_to_vk(key):
             return ord(key)
         except TypeError:
             raise ValueError('Unknown key {!r}'.format(key)) from None
+
+
+def _vk_to_key(vk):
+    try:
+        return INV_KEY_MAP[vk]
+    except KeyError:
+        return chr(vk)
 
 
 def _vk_to_kbd_input(vk, down):
@@ -371,6 +383,59 @@ def hold(*keys):
     finally:
         inputs = (INPUT * count)(*(_vk_to_kbd_input(_key_to_vk(key), False) for key in keys))
         ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
+
+
+class _Events:
+    def __init__(self):
+        self._before = ctypes.create_string_buffer(256)
+        self._after = ctypes.create_string_buffer(256)
+        self._events = []
+
+    @staticmethod
+    def _refetch(buffer):
+        # `GetKeyState` before `GetKeyboardState` seems to be needed for some reason.
+        ctypes.windll.user32.GetKeyState(0)
+        ctypes.windll.user32.GetKeyboardState(buffer)
+        buffer.raw = bytes(x & 0x80 for x in buffer.raw)
+
+    def _fill_events(self):
+        self._refetch(self._after)
+
+        for vk, (b, a) in enumerate(zip(self._before.raw, self._after.raw)):
+            if b != a:
+                self._events.append((_vk_to_key(vk), bool(a)))
+
+        self._before, self._after = self._after, self._before
+
+    def __iter__(self):
+        self._refetch(self._before)
+        return self
+
+    def __next__(self):
+        if not self._events:
+            self._fill_events()
+            while not self._events:
+                time.sleep(EVENTS_POLL_DELAY)
+                self._fill_events()
+
+        return self._events.pop()
+
+    def __aiter__(self):
+        self._refetch(self._before)
+        return self
+
+    async def __anext__(self):
+        if not self._events:
+            self._fill_events()
+            while not self._events:
+                await asyncio.sleep(EVENTS_POLL_DELAY)
+                self._fill_events()
+
+        return self._events.pop()
+
+
+def events():
+    return _Events()
 
 
 # Mouse-keyboard common
