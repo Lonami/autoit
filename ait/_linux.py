@@ -126,22 +126,7 @@ def _parse_pos(x, y):
     return str(int(x)), str(int(y)), rel
 
 
-@_requires_xdotool
-def click(*args):
-    argc = len(args)
-    assert argc < 4, 'Invalid number of arguments'
-    if argc & 2:
-        move(args[0], args[1])
-
-    button = _parse_button(args[-1]) if argc & 1 else '1'
-    subprocess.run(('xdotool', 'click', button))
-
-
-@_requires_xdotool
-def move(x, y):
-    x, y, rel = _parse_pos(x, y)
-    move_arg = 'mousemove_relative' if rel else 'mousemove'
-    subprocess.run(('xdotool', move_arg, x, y))
+# Mouse
 
 
 @_requires_xdotool
@@ -156,6 +141,27 @@ def mouse():
 
 
 @_requires_xdotool
+def move(x, y):
+    x, y, rel = _parse_pos(x, y)
+    move_arg = 'mousemove_relative' if rel else 'mousemove'
+    subprocess.run(('xdotool', move_arg, x, y))
+
+
+@_requires_xdotool
+def click(*args):
+    argc = len(args)
+    assert argc < 4, 'Invalid number of arguments'
+    if argc & 2:
+        move(args[0], args[1])
+
+    button = _parse_button(args[-1]) if argc & 1 else '1'
+    subprocess.run(('xdotool', 'click', button))
+
+
+# Keyboard
+
+
+@_requires_xdotool
 def press(*keys):
     args = ['xdotool', 'key']
     args.extend(KEYS.get(k, k) for k in keys)
@@ -167,6 +173,15 @@ def write(*texts):
     args = ['xdotool', 'type']
     args.extend(texts)
     subprocess.run(args)
+
+
+# Mouse-keyboard common
+
+
+# Clipboard
+
+
+# Screen-related functions
 
 
 try:

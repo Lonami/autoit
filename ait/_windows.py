@@ -4,7 +4,7 @@ import time
 import functools
 from ctypes.wintypes import HANDLE, BOOL, HWND, UINT, HGLOBAL, LPVOID
 from contextlib import contextmanager
-from ._common import Position, Color
+from ._common import Position, Color, MB
 
 NO_ERROR = 0
 
@@ -24,18 +24,10 @@ MOUSEEVENTF_MIDDLEUP = 0x0040
 
 
 # For keys see https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes
-BUTTONS = {
-    # Left (VK_LBUTTON = 1)
-    -1: 1,
-    'l': 1,
-    'L': 1,
-    # Middle (VK_MBUTTON = 4)
-    0: 4,
-    'm': 4,
-    'M': 4,
-    # Right ('RBUTTON = 2)': 1: 2,,
-    'r': 2,
-    'R': 2,
+BUTTON_TO_EVENTS = {
+    MB.L: (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
+    MB.R: (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
+    MB.M: (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
 }
 
 KEY_MAP = {
@@ -43,7 +35,7 @@ KEY_MAP = {
     'RMB': 0x02,
     'CANCEL': 0x03,
     'MMB': 0x04,
-    '\r': 0x08,
+    '\b': 0x08,
     '\t': 0x09,
     'CLEAR': 0x0C,
     '\n': 0x0D,
@@ -110,6 +102,11 @@ KEY_MAP = {
     'MEDIAPLAYPAUSE': 0xB3,
 }
 
+CF_UNICODETEXT = 13
+GMEM_MOVEABLE = 0x0002
+GMEM_ZEROINIT = 0x0040
+
+
 def _key_to_vk(key):
     key = key.upper()
     try:
@@ -118,22 +115,14 @@ def _key_to_vk(key):
         # TODO VkKeyScanExA
         return ord(key)
 
-
-BUTTON_TO_EVENTS = {
-    1: (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
-    2: (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
-    4: (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
-}
-
-CF_UNICODETEXT = 13
-GMEM_MOVEABLE = 0x0002
-GMEM_ZEROINIT = 0x0040
-
-def _parse_button(n):
-    try:
-        return BUTTONS[n]
-    except KeyError:
-        raise ValueError('Invalid button given') from None
+def _vk_to_kbd_input(vk, down):
+    return INPUT(type=INPUT_KEYBOARD, value=INPUTUNION(ki=KEYBDINPUT(
+        wVk=vk,
+        wScan=0,
+        dwFlags=(KEYEVENTF_KEYUP, 0)[down],
+        time=0,
+        dwExtraInfo=None
+    )))
 
 
 # ctypes is broken for pointers. ctypes.windll.* functions can be patched in-place but it's simpler not to.
@@ -287,53 +276,7 @@ class INPUT(ctypes.Structure):
     _fields_ = [('type', ctypes.c_long), ('value', INPUTUNION)]
 
 
-def wait_mouse(which):
-    """
-    https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getasynckeystate
-    SHORT GetAsyncKeyState(
-        int vKey
-    );
-    """
-    # 1 for left, 2 for right
-    while True:  # wait down
-        time.sleep(0.01)
-        if ctypes.windll.user32.GetAsyncKeyState(which):
-            break
-
-    while True:  # wait release
-        time.sleep(0.01)
-        if not ctypes.windll.user32.GetAsyncKeyState(which):
-            break
-
-    return get_mouse()
-
-
-def wait_key(before=ctypes.create_string_buffer(256), after=ctypes.create_string_buffer(256)):
-    """
-    https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getkeyboardstate
-    BOOL GetKeyboardState(
-        PBYTE lpKeyState
-    );
-    """
-    # get the current keyboard state
-    ctypes.windll.user32.GetKeyState(0)  # needed for some reason
-    ctypes.windll.user32.GetKeyboardState(before)
-    for i in range(256):
-        before[i] = int((before[i][0] & 0x80) != 0)
-
-    while True:  # get the new keyboard state...
-        time.sleep(0.05)
-        ctypes.windll.user32.GetKeyState(0)  # needed for some reason
-        ctypes.windll.user32.GetKeyboardState(after)
-        for key, (b, a) in enumerate(zip(before, after)):
-            b = b[0]
-            a = int((a[0] & 0x80) != 0)
-            if b != a:  # ...until we find a difference,
-                # then wait until the pressed key is released
-                while True:
-                    time.sleep(0.05)
-                    if not ctypes.windll.user32.GetAsyncKeyState(key):
-                        return key
+# Mouse
 
 
 def mouse():
@@ -365,43 +308,30 @@ def move(x, y):
     ctypes.windll.user32.SendInput(1, ctypes.byref(inputs), ctypes.sizeof(inputs))
 
 
+def click(*args):
+    # TODO move mouse with the call directly
+    argc = len(args)
+    assert argc < 4, 'Invalid number of arguments'
+    if argc & 2:
+        move(args[0], args[1])
 
-def color(x, y):
-    """
-    https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/nf-wingdi-getpixel
-    COLORREF GetPixel(
-        HDC hdc,
-        int x,
-        int y
-    );
-    Returns colors as zbgr int
-    """
-    zbgr = ctypes.windll.gdi32.GetPixel(DC_BOX.desktop, x, y)
-    return Color(
-        (zbgr >> 0) & 0xff,
-        (zbgr >> 8) & 0xff,
-        (zbgr >> 16) & 0xff,
-    )
+    button = _parse_button(args[-1]) if argc & 1 else 1
+    flags = BUTTON_TO_EVENTS[button]
 
-
-def is_down(vk):
-    """
-    https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getkeystate
-    SHORT GetKeyState(
-        int nVirtKey
-    );
-    """
-    return (ctypes.windll.user32.GetKeyState(vk) & 0x80) != 0
+    count = ctypes.c_uint(1)
+    for flag in flags:
+        inputs = INPUT(type=INPUT_MOUSE, value=INPUTUNION(mi=MOUSEINPUT(
+            dx=0,
+            dy=0,
+            mouseData=0,
+            dwFlags=flag,
+            time=0,
+            dwExtraInfo=None,
+        )))
+        ctypes.windll.user32.SendInput(count, ctypes.byref(inputs), ctypes.sizeof(inputs))
 
 
-def _vk_to_kbd_input(vk, down):
-    return INPUT(type=INPUT_KEYBOARD, value=INPUTUNION(ki=KEYBDINPUT(
-        wVk=vk,
-        wScan=0,
-        dwFlags=(KEYEVENTF_KEYUP, 0)[down],
-        time=0,
-        dwExtraInfo=None
-    )))
+# Keyboard
 
 
 def press(*keys):
@@ -436,27 +366,38 @@ def hold(*keys):
         ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
 
 
-def click(*args):
-    # TODO move mouse with the call directly
-    argc = len(args)
-    assert argc < 4, 'Invalid number of arguments'
-    if argc & 2:
-        move(args[0], args[1])
+# Mouse-keyboard common
 
-    button = _parse_button(args[-1]) if argc & 1 else 1
-    flags = BUTTON_TO_EVENTS[button]
 
-    count = ctypes.c_uint(1)
-    for flag in flags:
-        inputs = INPUT(type=INPUT_MOUSE, value=INPUTUNION(mi=MOUSEINPUT(
-            dx=0,
-            dy=0,
-            mouseData=0,
-            dwFlags=flag,
-            time=0,
-            dwExtraInfo=None,
-        )))
-        ctypes.windll.user32.SendInput(count, ctypes.byref(inputs), ctypes.sizeof(inputs))
+def holding(vk):
+    """
+    https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getkeystate
+    SHORT GetKeyState(
+        int nVirtKey
+    );
+    """
+    return (ctypes.windll.user32.GetKeyState(vk) & 0x80) != 0
+
+
+def color(x, y):
+    """
+    https://docs.microsoft.com/en-us/windows/desktop/api/wingdi/nf-wingdi-getpixel
+    COLORREF GetPixel(
+        HDC hdc,
+        int x,
+        int y
+    );
+    Returns colors as zbgr int
+    """
+    zbgr = ctypes.windll.gdi32.GetPixel(DC_BOX.desktop, x, y)
+    return Color(
+        (zbgr >> 0) & 0xff,
+        (zbgr >> 8) & 0xff,
+        (zbgr >> 16) & 0xff,
+    )
+
+
+# Clipboard
 
 
 def paste():
@@ -489,3 +430,6 @@ def copy(text):
     GlobalUnlock(handle)
     SetClipboardData(CF_UNICODETEXT, handle)
     CloseClipboard()
+
+
+# Screen

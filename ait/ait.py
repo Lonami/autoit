@@ -1,3 +1,52 @@
+"""
+ait
+===
+
+Automate it with Python. Move the mouse, click, type things or press key combinations from Python.
+
+Wherever a mouse button is expected, you can use the following values (strings are case insensitive):
+
+- Left click with -1, 'L' or 'LMB'
+- Middle click with 0, 'M' or 'MMB'
+- Right click with +1, 'R' or 'RMB'
+
+Wherever a key is expected, you can use either the character you want to type (for example, '!').
+Note that this includes the following escape sequences:
+
+- Backspace with '\b'
+- Enter key with '\n' (not carriage return, which although would make more sense is annoying).
+- Tabulator key with '\t'
+
+For special keys, the following strings can be used (case insensitive):
+
+- Left shift with 'SHIFT' or 'LSHIFT', or right shift with 'RSHIFT'
+- Left control with 'CTRL' or 'LCTRL', or right control with 'RCTRL'
+- Alt ("menu") with 'ALT' or 'LALT', or right alt with 'RALT'
+- Super (or "Windows key") with 'SUPER'
+- Function keys from 'F1' up to 'F24'
+- Caps lock with 'CAPSLOCK'
+- Num lock with 'NUMLOCK'
+- Scroll lock with 'SCROLLLOCK'
+- Escape with 'ESC'
+- Page up ("prior") with 'PAGEUP'
+- Page down ("next") with 'PAGEDOWN'
+- End with 'END'
+- Home with 'HOME'
+- Left arrow with 'LEFT'
+- Up arrow with 'UP'
+- Right arrow with 'RIGHT'
+- Down arrow with 'DOWN'
+- Insert with 'INS'
+- Delete with 'DEL'
+- Print screen with 'PRSCR'
+- Mute with 'MUTE'
+- Volumen down with 'VOLDOWN'
+- Volumen up with 'VOLUP'
+- Next media with 'MEDIANEXT'
+- Previous media with 'MEDIAPREV'
+- Stop media with 'MEDIASTOP'
+- Play/pause media with 'MEDIAPLAYPAUSE'
+"""
 import os
 import functools
 
@@ -19,33 +68,24 @@ def _proxy(f):
         return wrapped
 
 
+# Mouse
+
+
 @_proxy
-def click(*args):
+def mouse():
     """
-    Performs a mouse click.
+    Returns a named tuple for the current `(x, y)` coordinates of the mouse in screen.
 
-    To left-click wherever the mouse is right now:
-    >>> click()
+    The coordinates are absolute and start from `(0, 0)` at the top-left of the screen.
+    This means that the left-most `x` coordinate will be 0, the right-most the screen width
+    minus one, the top-most `y` will be 0, and the bottom-most the screen height minus one.
 
-    To use a different button:
-    - Left click with -1, 'l' or 'L'
-    - Middle click with 0, 'm' or 'M'
-    - Right click with +1, 'r' or 'R'
-    >>> click(1)
+    >>> pos = mouse()
+    >>> print(pos.x, pos.y)
 
-    To left-click after moving to some (x, y) from the top-left corner:
-    >>> click(120, 240)
+    Or:
 
-    You can use the 'j' prefix to use relative coordinates.
-    At least one non-zero value must have the 'j' prefix:
-    >>> click(0j, 20j)
-
-    You can use a floating point value to use percentages.
-    Note that you can combine this with the 'j' prefix too:
-    >>> click(0.2, 0.8)
-
-    To use a different button after moving to ome (x, y):
-    >>> click(240, 360, 'm')
+    >>> (x, y) = mouse()
     """
 
 
@@ -54,45 +94,48 @@ def move(x, y):
     """
     Moves the mouse across the screen.
 
-    To move the mouse to (x, y) from the top-left corner:
+    You can use integers to mean absolute coordinates from the top-left corner.
+    To move the mouse to `(x, y)`:
+
     >>> move(120, 240)
 
-    You can use the 'j' prefix to use relative coordinates.
+    You can use the 'j' prefix to mean relative coordinates.
     At least one non-zero value must have the 'j' prefix:
+
     >>> move(0j, 20j)
 
-    You can use a floating point value to use percentages.
+    You can use a floating point value to mean percentages.
     Note that you can combine this with the 'j' prefix too:
+
     >>> move(0.2, 0.8)
     """
 
 
-@_proxy
-def mouse():
+def click(*args):
     """
-    Returns a named tuple for the current (x, y) coordinates of the mouse
-    in screen. This means you can access the fields as result.x and result.y
-    as well, or use 'x, y = mouse()'.
+    Performs a mouse click.
+
+    To left-click wherever the mouse is right now:
+
+    >>> click()
+
+    To use a different button, like right-click:
+
+    >>> click(1)
+
+    To left-click after moving to some `(x, y)` from the top-left corner:
+
+    >>> click(120, 240)
+
+    You can also use all the movement options from `move` for `click`.
+
+    To use a different button after moving to some `(x, y)`:
+
+    >>> click(240, 360, 'm')
     """
 
 
-@_proxy
-def color(x, y):
-    """
-    Return the `(R, G, B)` color at the given position.
-    """
-
-
-@_proxy
-def is_down(key):
-    """
-    Is the given key being pressed?
-
-    >>> if is_down('h'):
-    ...     print('h')
-    ... else:
-    ...     print('no h :(')
-    """
+# Keyboard
 
 
 @_proxy
@@ -100,13 +143,10 @@ def press(*keys):
     """
     Presses the given key(s).
 
-    You use 'shift', 'ctrl', 'alt' and 'super' to press these control keys.
     You can press more than one key at once joining them by '+' like 'ctrl+d'.
-    You can press function keys from 'F1' to 'F12' (upper-case F letter).
-    You can use '\b' as backspace.
 
     >>> press('j')
-    >>> press('H', 'i', 'Return')
+    >>> press('H', 'i', '\n')
     >>> press('shift+h')
     >>> press('ctrl+d')
     >>> press('alt+F4')
@@ -132,17 +172,53 @@ def hold(*keys):
     """
 
 
+def write(*texts, *, sep=' ', end=''):
+    """
+    Type the given text(s) as they are, as fast as possible.
+
+    >>> write('Hello, world!')
+
+    `sep` and `end` behave like they do in `print`, but `end` defaults to the empty string instead.
+
+    >>> write('Hello', 'world!', sep=' ... ', end='\n')
+    """
+    _mod.write(sep.join(texts) + end)
+
+
+# Mouse-keyboard common
+
+
 @_proxy
-def write(*texts):
+def holding(key):
     """
-    Writes the given text(s).
+    Is the given key being held?
+
+    >>> if holding('h'):
+    ...     print('h')
+    ... else:
+    ...     print('no h :(')
+
+    Note that you can use this for mouse buttons with the 'LMB' notation:
+
+    >>> if holding('lmb'):
+    ...     print('dragging something')
+    ... else:
+    ...     print('left mouse button not being held')
     """
+
+
+# Clipboard
 
 
 @_proxy
 def paste():
     """
     Paste the current clipboard contents into a Python `str` and return it.
+
+    If you want to emulate pressing `Ctrl+V`, use `press` instead.
+
+    >>> clipboard = paste()
+    >>> print(clipboard)
     """
 
 
@@ -150,4 +226,42 @@ def paste():
 def copy(text):
     """
     Copy the given input text into the system's clipboard.
+
+    If you want to emulate pressing `Ctrl+C`, use `press` instead.
+
+    >>> copy('meow')
     """
+
+
+# Screen-related functions
+
+
+@_proxy
+def size():
+    """
+    Returns a named tuple for the primary screen's `(width, height)`:
+
+    >>> dim = size()
+    >>> aspect_ratio = dim.width / dim.height
+    """
+
+
+def color(*args):
+    """
+    Returns a named tuple for the  `(r, g, b)` color at the current mouse position:
+
+    >>> rgb = color()
+    >>> print(rgb.r)
+
+    Or, if a position is given:
+
+    >>> r, g, b = color(100, 200)
+    >>> print(g)
+    """
+    argc = len(args)
+    if argc == 0:
+        x, y = mouse()
+    elif argc == 2:
+        x, y = args
+    else:
+        raise TypeError('0 or 2 arguments required, but {} given'.format(argc))
