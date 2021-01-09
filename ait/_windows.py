@@ -108,12 +108,16 @@ GMEM_ZEROINIT = 0x0040
 
 
 def _key_to_vk(key):
-    key = key.upper()
+    key = key.strip().upper()
     try:
         return KEY_MAP[key]
     except KeyError:
-        # TODO VkKeyScanExA
-        return ord(key)
+        try:
+            # TODO VkKeyScanExA
+            return ord(key)
+        except TypeError:
+            raise ValueError('Unknown key {!r}'.format(key)) from None
+
 
 def _vk_to_kbd_input(vk, down):
     return INPUT(type=INPUT_KEYBOARD, value=INPUTUNION(ki=KEYBDINPUT(
@@ -123,6 +127,14 @@ def _vk_to_kbd_input(vk, down):
         time=0,
         dwExtraInfo=None
     )))
+
+
+def _key_as_kbd_inputs(key):
+    vks = list(map(_key_to_vk, key.split('+')))
+    for vk in vks:
+        yield _vk_to_kbd_input(vk, True)
+    for vk in reversed(vks):
+        yield _vk_to_kbd_input(vk, False)
 
 
 # ctypes is broken for pointers. ctypes.windll.* functions can be patched in-place but it's simpler not to.
@@ -343,13 +355,8 @@ def press(*keys):
         int     cbSize
     );
     """
-    count = 2 * len(keys)
-    inputs = []
-    for i, key in enumerate(keys):
-        vk = _key_to_vk(key)
-        inputs.append(_vk_to_kbd_input(vk, True))
-        inputs.append(_vk_to_kbd_input(vk, False))
-
+    inputs = [i for key in keys for i in _key_as_kbd_inputs(key)]
+    count = len(inputs)
     inputs = (INPUT * count)(*inputs)
     ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
 

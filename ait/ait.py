@@ -143,14 +143,16 @@ def press(*keys):
     """
     Presses the given key(s).
 
-    You can press more than one key at once joining them by '+' like 'ctrl+d'.
-
     >>> press('j')
     >>> press('H', 'i', '\n')
+    >>> press('super')
+
+    You can press more than one key at once joining them by '+' like 'ctrl+d', which is equivalent
+    to using `hold` for all the keys except the last one and then `press` on that last key.
+
     >>> press('shift+h')
     >>> press('ctrl+d')
     >>> press('alt+F4')
-    >>> press('super')
     """
 
 
@@ -172,7 +174,7 @@ def hold(*keys):
     """
 
 
-def write(*texts, *, sep=' ', end=''):
+def write(*texts, sep=' ', end=''):
     """
     Type the given text(s) as they are, as fast as possible.
 
