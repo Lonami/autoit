@@ -111,6 +111,7 @@ def move(x, y):
     """
 
 
+@_proxy
 def click(*args):
     """
     Performs a mouse click.
@@ -285,3 +286,5 @@ def color(*args):
         x, y = args
     else:
         raise TypeError('0 or 2 arguments required, but {} given'.format(argc))
+
+    return _mod.color(x, y)
