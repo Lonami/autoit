@@ -685,7 +685,7 @@ def paste():
 
 
 def copy(text):
-    buffer = s.encode('utf-16le')
+    buffer = text.encode('utf-16le')
     OpenClipboard(None)
     EmptyClipboard()
     handle = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, len(buffer) + 2)
