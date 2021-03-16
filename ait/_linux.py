@@ -145,12 +145,16 @@ def click(*args):
         button = MB.L
     elif argc == 1:
         button = MB.parse(args[0])
+    elif argc == 2:
+        x, y = args
+        button = MB.L
+        move(x, y)
     elif argc == 3:
         x, y, button = args
         button = MB.parse(button)
         move(x, y)
     else:
-        raise TypeError('0, 1 or 3 arguments required, but {} given'.format(argc))
+        raise TypeError('0, 1, 2 or 3 arguments required, but {} given'.format(argc))
 
     subprocess.run(('xdotool', 'click', BUTTONS[button]))
 

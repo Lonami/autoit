@@ -525,6 +525,11 @@ def click(*args):
         button = MB.L
     elif argc == 1:
         button = MB.parse(args[0])
+    elif argc == 2:
+        x, y = args
+        button = MB.parse(args[0])
+        # TODO move mouse with the call directly
+        move(x, y)
     elif argc == 3:
         x, y, button = args
         button = MB.parse(button)
