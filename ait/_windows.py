@@ -536,7 +536,7 @@ def click(*args):
         # TODO move mouse with the call directly
         move(x, y)
     else:
-        raise TypeError('0, 1 or 3 arguments required, but {} given'.format(argc))
+        raise TypeError('0, 1, 2 or 3 arguments required, but {} given'.format(argc))
 
     flags = BUTTON_TO_EVENTS[button]
     count = ctypes.c_uint(1)
