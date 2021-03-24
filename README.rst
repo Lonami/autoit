@@ -21,9 +21,11 @@ How to install it?
 External requirements?
 ----------------------
 
-- Linux, for now.
-- ``xdotool`` to do any ``ait`` operation.
-- Python's ``Xlib`` to use ``ait.log`` (mouse/keyboard logger).
+- Windows, or
+- Linux
+
+  - ``xdotool`` to do any ``ait`` operation.
+  - Python's ``Xlib`` to use ``ait.log`` (mouse/keyboard logger).
 
 
 How does it look like?
