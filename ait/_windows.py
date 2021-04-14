@@ -15,6 +15,10 @@ INPUT_MOUSE = 0
 INPUT_KEYBOARD = 1
 INPUT_HARDWARE = 2
 
+VK_SHIFT = 0x10
+VK_CONTROL = 0x11
+VK_MENU = 0x12  # ALT
+
 KEYEVENTF_KEYUP = 0x0002
 
 
@@ -580,6 +584,38 @@ def hold(*keys):
     finally:
         inputs = (INPUT * count)(*(_vk_to_kbd_input(_key_to_vk(key), False) for key in keys))
         ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
+
+
+def write(text):
+    inputs = []
+    for c in text:
+        scan = ctypes.windll.user32.VkKeyScanA(ord(c))
+        if scan == 0xffff:
+            continue
+
+        vk = scan & 0xff
+        shift = (scan >> 8) & 0xff
+
+        if shift & 1:
+            inputs.append(_vk_to_kbd_input(VK_SHIFT, True))
+        if shift & 2:
+            inputs.append(_vk_to_kbd_input(VK_CONTROL, True))
+        if shift & 4:
+            inputs.append(_vk_to_kbd_input(VK_MENU, True))
+
+        inputs.append(_vk_to_kbd_input(vk, True))
+        inputs.append(_vk_to_kbd_input(vk, False))
+
+        if shift & 1:
+            inputs.append(_vk_to_kbd_input(VK_SHIFT, False))
+        if shift & 2:
+            inputs.append(_vk_to_kbd_input(VK_CONTROL, False))
+        if shift & 4:
+            inputs.append(_vk_to_kbd_input(VK_MENU, False))
+
+    count = len(inputs)
+    inputs = (INPUT * count)(*inputs)
+    ctypes.windll.user32.SendInput(count, inputs, ctypes.sizeof(INPUT))
 
 
 class _Events:
