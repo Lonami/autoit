@@ -288,3 +288,61 @@ def color(*args):
         raise TypeError('0 or 2 arguments required, but {} given'.format(argc))
 
     return _mod.color(x, y)
+
+
+
+def screenshot(*args):
+    """
+    Take a screenshot.
+
+    When you need to query multiple points in a given instant of time,
+    this is often faster than calling `color` a lot of times.
+
+    >>> ss = screenshot()
+    >>> print('number of pixels', len(ss))
+    >>> print('dimensions', ss.size())
+    >>> print('first pixel', ss[0])
+    >>> print('pixel at x=100, y=200', ss[100, 200])
+    >>> print('pixel under mouse', ss[mouse()])
+
+    You may specify a region instead (offset from left, offset from top, width, height):
+
+    >>> ss = screenshot(100, 100, 200, 200)
+    >>> print(ss.size())  # 200, 200
+
+    Or with percentages:
+
+    >>> ss = screenshot(0.25, 0.25, 0.5, 0.5)  # center of screen
+    >>> width, height = ss.size()
+    >>> buffer = bytes(ss)
+    >>> with open('screenshot.ppm', 'wb') as fd:  # save as Netpbm
+    >>>     fd.write(f'P6 {width} {height} 255\n'.encode('ascii'))
+    >>>     fd.write(buffer)
+
+    You can refresh a previously-taken screenshot to get the current screen contents:
+
+    >>> ss.refresh()  # like taking a new screenshot of the same region but faster
+
+    You can convert the screenshot to raw bytes in RGB format with `bytes(ss)`.
+    """
+    argc = len(args)
+    if argc == 0:
+        x = y = 0
+        w, h = size()
+    elif argc == 4:
+        x, y, w, h = args
+    else:
+        raise TypeError('0 or 2 arguments required, but {} given'.format(argc))
+
+    if any(isinstance(v, float) for v in (x, y, w, h)):
+        width, height = size()
+        if isinstance(x, float):
+            x *= width
+        if isinstance(y, float):
+            y *= height
+        if isinstance(w, float):
+            w *= width
+        if isinstance(h, float):
+            h *= height
+
+    return _mod.screenshot(*(map(int, (x, y, w, h))))

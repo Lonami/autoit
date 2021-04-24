@@ -29,6 +29,9 @@ MOUSEEVENTF_RIGHTUP = 0x0010
 MOUSEEVENTF_MIDDLEDOWN = 0x0020
 MOUSEEVENTF_MIDDLEUP = 0x0040
 
+BI_RGB = DIB_RGB_COLORS = 0
+SRCCOPY = 0x00CC0020
+ERROR_INVALID_PARAMETER = 87
 
 # https://docs.microsoft.com/en-us/windows/desktop/inputdev/virtual-key-codes
 KEYS = [
@@ -365,17 +368,6 @@ GlobalAlloc = _define(kernel32.GlobalAlloc, HGLOBAL, UINT, ctypes.c_size_t)
 GlobalSize = _define(kernel32.GlobalSize, ctypes.c_size_t, HGLOBAL)
 
 
-
-@functools.lru_cache(1)
-def _get_screen_size():
-    # https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsystemmetrics
-    SM_CXSCREEN = 0
-    SM_CYSCREEN = 1
-    width = ctypes.windll.user32.GetSystemMetrics(SM_CXSCREEN)
-    height = ctypes.windll.user32.GetSystemMetrics(SM_CYSCREEN)
-    return width, height
-
-
 def _parse_pos(x, y):
     # https://docs.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-mouseinput
     MAX = 65535
@@ -386,7 +378,7 @@ def _parse_pos(x, y):
         y = y.imag or y.real
 
     if not (0.0 < x < 1.0 or 0.0 < y < 1.0):
-        w, h = _get_screen_size()
+        w, h = size()
         x /= w
         y /= h
 
@@ -395,15 +387,17 @@ def _parse_pos(x, y):
     return int(x), int(y), rel
 
 
-class DCBox:
-    def __init__(self):
-        self.desktop = ctypes.windll.user32.GetDC(0)
+class Resource:
+    def __init__(self, val, delete):
+        assert val
+        self.val = val
+        self.delete = delete
 
     def __del__(self):
-        ctypes.windll.user32.ReleaseDC(self.desktop)
+        self.delete(self.val)
 
 
-DC_BOX = DCBox()
+DESKTOP_DC = Resource(ctypes.windll.user32.GetDC(0), ctypes.windll.user32.ReleaseDC)
 
 
 class POINT(ctypes.Structure):
@@ -489,6 +483,85 @@ class INPUT(ctypes.Structure):
     } INPUT, *PINPUT, *LPINPUT;
     """
     _fields_ = [('type', ctypes.c_long), ('value', INPUTUNION)]
+
+
+class RECT(ctypes.Structure):
+    """
+    https://docs.microsoft.com/en-us/windows/win32/api/windef/ns-windef-rect
+    typedef struct tagRECT {
+        LONG left;
+        LONG top;
+        LONG right;
+        LONG bottom;
+    } RECT, *PRECT, *NPRECT, *LPRECT;
+    """
+    _fields_ = [
+        ('left', ctypes.c_long),
+        ('top', ctypes.c_long),
+        ('right', ctypes.c_long),
+        ('bottom', ctypes.c_long),
+    ]
+
+
+class BITMAPINFOHEADER(ctypes.Structure):
+    """
+    https://docs.microsoft.com/en-us/previous-versions/dd183376(v=vs.85)
+    typedef struct tagBITMAPINFOHEADER {
+        DWORD biSize;
+        LONG  biWidth;
+        LONG  biHeight;
+        WORD  biPlanes;
+        WORD  biBitCount;
+        DWORD biCompression;
+        DWORD biSizeImage;
+        LONG  biXPelsPerMeter;
+        LONG  biYPelsPerMeter;
+        DWORD biClrUsed;
+        DWORD biClrImportant;
+    } BITMAPINFOHEADER, *PBITMAPINFOHEADER;
+    """
+    _fields_ = [
+        ('biSize', ctypes.c_ulong),
+        ('biWidth', ctypes.c_long),
+        ('biHeight', ctypes.c_long),
+        ('biPlanes', ctypes.c_ushort),
+        ('biBitCount', ctypes.c_ushort),
+        ('biCompression', ctypes.c_ulong),
+        ('biSizeImage', ctypes.c_ulong),
+        ('biXPelsPerMeter', ctypes.c_long),
+        ('biYPelsPerMeter', ctypes.c_long),
+        ('biClrUsed', ctypes.c_ulong),
+        ('biClrImportant', ctypes.c_ulong),
+    ]
+
+
+class RGBQUAD(ctypes.Structure):
+    """
+    https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-rgbquad
+    typedef struct tagRGBQUAD {
+        BYTE rgbBlue;
+        BYTE rgbGreen;
+        BYTE rgbRed;
+        BYTE rgbReserved;
+    } RGBQUAD;
+    """
+    _fields_ = [
+        ('rgbBlue', ctypes.c_char),
+        ('rgbGreen', ctypes.c_char),
+        ('rgbRed', ctypes.c_char),
+        ('rgbReserved', ctypes.c_char),
+    ]
+
+
+class BITMAPINFO(ctypes.Structure):
+    """
+    https://docs.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfo
+    typedef struct tagBITMAPINFO {
+        BITMAPINFOHEADER bmiHeader;
+        RGBQUAD          bmiColors[1];
+    } BITMAPINFO, *LPBITMAPINFO, *PBITMAPINFO;
+    """
+    _fields_ = [('bmiHeader', BITMAPINFOHEADER), ('bmiColors', RGBQUAD)]
 
 
 # Mouse
@@ -694,7 +767,7 @@ def color(x, y):
     );
     Returns colors as zbgr int
     """
-    zbgr = ctypes.windll.gdi32.GetPixel(DC_BOX.desktop, x, y)
+    zbgr = ctypes.windll.gdi32.GetPixel(DESKTOP_DC.val, x, y)
     return Color(
         (zbgr >> 0) & 0xff,
         (zbgr >> 8) & 0xff,
@@ -738,3 +811,96 @@ def copy(text):
 
 
 # Screen
+
+
+@functools.lru_cache(1)
+def size():
+    # https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsystemmetrics
+    """
+    Alternative impl:
+    # https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getdesktopwindow
+    handle = ctypes.windll.user32.GetDesktopWindow()
+    res = ctypes.windll.user32.GetWindowRect(handle, ctypes.byref(rect))
+    assert res
+    return rect.right, rect.bottom
+    """
+    SM_CXSCREEN = 0
+    SM_CYSCREEN = 1
+    width = ctypes.windll.user32.GetSystemMetrics(SM_CXSCREEN)
+    height = ctypes.windll.user32.GetSystemMetrics(SM_CYSCREEN)
+    return width, height
+
+
+class _Screenshot:
+    def __init__(self, x, y, width, height):
+        self._mem_dc = Resource(ctypes.windll.gdi32.CreateCompatibleDC(0), ctypes.windll.gdi32.DeleteDC)
+        self._bmp = Resource(ctypes.windll.gdi32.CreateCompatibleBitmap(DESKTOP_DC.val, width, height),
+                             ctypes.windll.gdi32.DeleteObject)
+        so = ctypes.windll.gdi32.SelectObject(self._mem_dc.val, self._bmp.val)
+        assert so and so != -1 and so != 0xffffffffffffffff
+
+        self._bmp_info = BITMAPINFO(bmiHeader=BITMAPINFOHEADER(
+            biBitCount=24,
+            biCompression=BI_RGB,
+            biPlanes=1,
+            biHeight=-height,
+            biWidth=width,
+            biSize=ctypes.sizeof(BITMAPINFO),
+        ))
+        self._x = x
+        self._y = y
+        self._width = width
+        self._height = height
+        self._pixels = ctypes.create_string_buffer(width * height * 3)
+        self._rgb = None
+        self.refresh()
+
+    def refresh(self):
+        self._rgb = None
+        res = ctypes.windll.gdi32.BitBlt(
+            self._mem_dc.val,
+            0,
+            0,
+            self._width,
+            self._height,
+            DESKTOP_DC.val,
+            self._x,
+            self._y,
+            SRCCOPY,
+        )
+        assert res
+        res = ctypes.windll.gdi32.GetDIBits(
+            self._mem_dc.val,
+            self._bmp.val,
+            0,
+            self._height,
+            self._pixels,
+            ctypes.byref(self._bmp_info),
+            DIB_RGB_COLORS,
+        )
+        assert res and res != ERROR_INVALID_PARAMETER
+
+    def __len__(self):
+        return self._width * self._height
+
+    def size(self):
+        return self._width, self._height
+
+    def __getitem__(self, key):
+        if isinstance(key, tuple):
+            key = key[1] * self._width + key[0]
+        if not isinstance(key, int):
+            raise TypeError('only tuple or int supported')
+        key *= 3
+        return Color(*self._pixels.raw[key:key + 3][::-1])
+
+    def __bytes__(self):
+        if not self._rgb:
+            rgb = bytearray(self._pixels.raw)
+            rgb[::3], rgb[2::3] = rgb[2::3], rgb[::3]  # BGR -> RGB
+            self._rgb = bytes(rgb)
+
+        return self._rgb
+
+def screenshot(x, y, w, h):
+    return _Screenshot(x, y, w, h)
