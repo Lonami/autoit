@@ -307,7 +307,7 @@ GMEM_ZEROINIT = 0x0040
 
 
 def _key_to_vk(key):
-    key = key.strip().upper()
+    key = key.strip(' ').upper()
     try:
         return KEY_MAP[key]
     except KeyError:
