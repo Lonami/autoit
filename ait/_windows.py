@@ -307,7 +307,7 @@ GMEM_ZEROINIT = 0x0040
 
 
 def _key_to_vk(key):
-    key = key.strip().upper()
+    key = key.strip(' ').upper()
     try:
         return KEY_MAP[key]
     except KeyError:
@@ -604,7 +604,7 @@ def click(*args):
         button = MB.parse(args[0])
     elif argc == 2:
         x, y = args
-        button = MB.parse(args[0])
+        button = MB.L
         # TODO move mouse with the call directly
         move(x, y)
     elif argc == 3:
