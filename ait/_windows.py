@@ -67,7 +67,7 @@ KEYS = [
     ('IMENONCONVERT',),
     ('IMEACCEPT',),
     ('IMEMODECHANGE',),
-    (' ',),
+    (' ', 'SPACE',),
     ('PAGEUP',),
     ('PAGEDOWN',),
     ('END',),
