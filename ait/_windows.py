@@ -748,14 +748,14 @@ def events():
 # Mouse-keyboard common
 
 
-def holding(vk):
+def holding(key):
     """
     https://docs.microsoft.com/en-us/windows/desktop/api/winuser/nf-winuser-getkeystate
     SHORT GetKeyState(
         int nVirtKey
     );
     """
-    return (ctypes.windll.user32.GetKeyState(vk) & 0x80) != 0
+    return (ctypes.windll.user32.GetKeyState(_key_to_vk(key)) & 0x80) != 0
 
 
 def color(x, y):
