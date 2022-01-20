@@ -60,7 +60,6 @@ How does it look like?
 
     # Pressing keys can also be done
     ait.press('q', '!', '\n')  # Exit vim
-    ait.press(*'\b' * 10)  # 10 carriage returns
-
+    ait.press(*'\b' * 10)  # 10 backspaces
     # Writing things with the keyboard too
     ait.write('Hello world!\n')
