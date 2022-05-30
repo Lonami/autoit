@@ -377,14 +377,15 @@ def _parse_pos(x, y):
     if rel:
         x = x.imag or x.real
         y = y.imag or y.real
+    else:
+        if not (0.0 < x < 1.0 or 0.0 < y < 1.0):
+            w, h = size()
+            x /= w
+            y /= h
 
-    if not (0.0 < x < 1.0 or 0.0 < y < 1.0):
-        w, h = size()
-        x /= w
-        y /= h
+        x *= MAX
+        y *= MAX
 
-    x *= MAX
-    y *= MAX
     return int(x), int(y), rel
 
 
