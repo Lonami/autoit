@@ -375,16 +375,19 @@ def _parse_pos(x, y):
 
     rel = bool(x.imag or y.imag)
     if rel:
-        x = x.imag or x.real
-        y = y.imag or y.real
-    else:
-        if not (0.0 < x < 1.0 or 0.0 < y < 1.0):
-            w, h = size()
-            x /= w
-            y /= h
+        # Relative movement is hard: https://stackoverflow.com/a/72446795/4759433.
+        # TL;DR; give up and use absolute position.
+        bx, by = mouse()
+        x = bx + (x.imag or x.real)
+        y = by + (y.imag or y.real)
 
-        x *= MAX
-        y *= MAX
+    if not (0.0 < x < 1.0 or 0.0 < y < 1.0):
+        w, h = size()
+        x /= w
+        y /= h
+
+    x *= MAX
+    y *= MAX
 
     return int(x), int(y), rel
 
@@ -591,7 +594,7 @@ def move(x, y):
         dx=x,
         dy=y,
         mouseData=0,
-        dwFlags=MOUSEEVENTF_MOVE | (MOUSEEVENTF_ABSOLUTE, 0)[rel],
+        dwFlags=MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
         time=0,
         dwExtraInfo=None,
     )))
