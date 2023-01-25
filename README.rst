@@ -28,8 +28,8 @@ External requirements?
   - Python's ``Xlib`` to use ``ait.log`` (mouse/keyboard logger).
 
 
-How does it look like?
-----------------------
+What does it look like?
+-----------------------
 
 .. code-block:: python
 
