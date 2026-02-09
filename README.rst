@@ -1,3 +1,7 @@
+Moved to https://codeberg.org/Lonami/autoit. The GitHub repository may be deleted in the future.
+
+---
+
 ait
 ===
 
